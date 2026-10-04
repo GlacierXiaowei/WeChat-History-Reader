@@ -10,7 +10,7 @@ import venv
 from pathlib import Path
 
 
-PACKAGE_VERSION = "1.1.0"
+PACKAGE_VERSION = "2.0.0"
 MISSING_PYTHON_MESSAGE = (
     "Get Wechat History requires Python 3.10 or newer. "
     "Install Python 3.10+ and make sure the Windows Python launcher or python command is available."
@@ -83,7 +83,7 @@ def _source_hash(root: Path) -> str:
             and "__pycache__" not in path.relative_to(directory).parts
         )
 
-    digest = hashlib.sha256(b"get-wechat-history-runtime-v1\0")
+    digest = hashlib.sha256(b"get-wechat-history-runtime-v2\0")
     for path in sorted(files, key=lambda item: item.relative_to(root).as_posix()):
         digest.update(path.relative_to(root).as_posix().encode("utf-8"))
         digest.update(b"\0")

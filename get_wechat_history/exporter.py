@@ -67,6 +67,7 @@ class HistoryExporter:
                     chat["id"],
                     start_time=start_time,
                     end_time=end_time,
+                    include_raw_content=True,
                 )
             )
             snapshot_check = getattr(backend, "snapshot_is_current", None)

@@ -146,4 +146,4 @@ def extract_all_keys(db_dir: str, out_file: str) -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit("Use initialize_wechat_history to recover keys for a chosen database path.")
+    raise SystemExit("Use configure_history to recover keys for a chosen database path.")

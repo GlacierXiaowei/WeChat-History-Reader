@@ -19,105 +19,92 @@ service = HistoryService(
 mcp = FastMCP(
     "get-wechat-history",
     instructions=(
-        "Read local WeChat history through the configured database path. "
-        "Initialize once when setup is missing, use doctor for environment checks, "
-        "check freshness once per task, search chats before reading messages, "
-        "and use paged reads for compact results."
+        "Get WeChat History 2.0. Configure or check only for setup. "
+        "For a known contact, group, or chat_id call read_conversation directly. "
+        "Use find_conversations only for ambiguous lookup; never use "
+        "read_recent_across_chats to locate a known chat. Reads default to compact "
+        "AI rows; use records for evidence and create_snapshot for long fixed reads."
     ),
 )
 
 
-def _error_result(scope: str, status: str, error: str) -> dict[str, Any]:
-    result = {
+def _error_result(
+    scope: str,
+    status: str,
+    error: str,
+    *,
+    mode: str = "compact",
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
         "status": status,
         "scope": scope,
-        "chat": None,
-        "messages": [],
-        "count": 0,
-        "next_cursor": "",
-        "has_more": False,
-        "candidates": [],
-        "snapshot_at": "",
-        "cache_status": "",
-        "source_changed": False,
         "error": error,
     }
-    if scope == "chat_search":
-        result["chats"] = []
-    if scope == "freshness":
-        result.update(
-            {
-                "cache_status": "",
-                "refreshed": False,
-                "source_changed": False,
-                "snapshot": {},
-            }
-        )
+    if scope in {"conversation", "recent"}:
+        result.update({"count": 0, "has_more": False, "next_cursor": ""})
+        result["messages" if str(mode).casefold() == "records" else "rows"] = []
+    if scope == "find":
+        result.update({"conversations": [], "count": 0})
     return result
 
 
-def safe_call(scope: str, callback: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+def safe_call(
+    scope: str,
+    callback: Callable[[], dict[str, Any]],
+    *,
+    mode: str = "compact",
+) -> dict[str, Any]:
     try:
         return callback()
     except ReaderUnavailableError as exc:
-        return _error_result(scope, exc.status, str(exc))
+        return _error_result(scope, exc.status, str(exc), mode=mode)
     except Exception as exc:
-        return _error_result(scope, "error", str(exc))
+        return _error_result(scope, "error", str(exc), mode=mode)
 
 
 @mcp.tool()
-def initialize_wechat_history(db_dir: str = "", discover: bool = False) -> dict[str, Any]:
-    """Prepare the local history reader and persist the selected database path.
+def configure_history(db_dir: str = "", discover: bool = False) -> dict[str, Any]:
+    """Configure or switch the local WeChat data directory.
 
-    Args:
-        db_dir: Known WeChat db_storage directory. Leave empty only when discover is true.
-        discover: Permit one controlled local WeChat data-directory discovery during initialization.
+    Pass db_dir when known. Use discover=true only when one local discovery is explicitly allowed.
     """
     result = safe_call(
-        "initialize",
-        lambda: service.initialize_wechat_history(db_dir=db_dir, discover=discover),
+        "configure",
+        lambda: service.configure_history(db_dir=db_dir, discover=discover),
     )
     result["scanner_build_id"] = SCANNER_BUILD_ID
     return result
 
 
 @mcp.tool()
-def doctor_wechat_history() -> dict[str, Any]:
-    """Check Python, saved path, desktop WeChat process, and cached-key compatibility."""
-    result = safe_call("doctor", service.doctor_wechat_history)
+def check_history() -> dict[str, Any]:
+    """Diagnose configuration, WeChat process state, keys, and database access."""
+    result = safe_call("check", service.check_history)
     result["scanner_build_id"] = SCANNER_BUILD_ID
     return result
 
 
 @mcp.tool()
-def ensure_wechat_history_fresh(force: bool = False) -> dict[str, Any]:
-    """Check whether the local history snapshot is fresh and refresh changed source state when needed.
-
-    Args:
-        force: Check the source now even when the one-hour cache window has not elapsed.
-    """
-    return safe_call(
-        "freshness",
-        lambda: service.ensure_wechat_history_fresh(force=force),
-    )
+def refresh_history() -> dict[str, Any]:
+    """Force one local database refresh; success returns only status and refreshed_at."""
+    return safe_call("refresh", service.refresh_history)
 
 
 @mcp.tool()
-def search_chats(
+def find_conversations(
     query: str,
     limit: int = 20,
+    chat_kind: str = "any",
     member_count: int | None = None,
     min_member_count: int | None = None,
 ) -> dict[str, Any]:
-    """Find likely group chats by fuzzy name, nickname, remark, or chat id.
-
-    Member counts are optional hints used for ranking only; they never filter out a group.
-    """
+    """Find direct or group conversations when the target is ambiguous."""
     return safe_call(
-        "chat_search",
-        lambda: service.search_chats(
+        "find",
+        lambda: service.find_conversations(
             query,
             limit=limit,
+            chat_kind=chat_kind,
             member_count=member_count,
             min_member_count=min_member_count,
         ),
@@ -125,59 +112,74 @@ def search_chats(
 
 
 @mcp.tool()
-def read_recent_messages(
+def read_conversation(
+    chat: str | None = None,
+    snapshot_id: str = "",
     limit: int = 100,
     cursor: str = "",
     keyword: str = "",
     start_time: str = "",
     end_time: str = "",
+    mode: str = "compact",
     include_raw_content: bool = False,
-) -> dict[str, Any]:
-    """Read an actual page of the newest local messages across chats."""
-    return safe_call(
-        "recent",
-        lambda: service.read_recent_messages(
-            limit=limit,
-            cursor=cursor,
-            keyword=keyword,
-            start_time=start_time,
-            end_time=end_time,
-            include_raw_content=include_raw_content,
-        ),
-    )
-
-
-@mcp.tool()
-def read_chat_history(
-    chat: str,
-    limit: int = 100,
-    cursor: str = "",
-    keyword: str = "",
-    start_time: str = "",
-    end_time: str = "",
+    create_snapshot: bool = False,
     member_count: int | None = None,
     min_member_count: int | None = None,
-    include_raw_content: bool = False,
 ) -> dict[str, Any]:
-    """Read a page from one resolved person or group without silently choosing duplicates."""
+    """Read one known conversation directly in compact AI rows, or continue a machine snapshot.
+
+    Use chat for a known person, group, or chat_id. Use snapshot_id only for a prior
+    create_snapshot result. chat and snapshot_id are mutually exclusive. compact is
+    the default; records is only for evidence or raw content.
+    """
     return safe_call(
-        "chat",
-        lambda: service.read_chat_history(
+        "conversation",
+        lambda: service.read_conversation(
             chat,
+            snapshot_id=snapshot_id,
             limit=limit,
             cursor=cursor,
             keyword=keyword,
             start_time=start_time,
             end_time=end_time,
+            mode=mode,
+            include_raw_content=include_raw_content,
+            create_snapshot=create_snapshot,
             member_count=member_count,
             min_member_count=min_member_count,
-            include_raw_content=include_raw_content,
         ),
+        mode=mode,
     )
 
 
 @mcp.tool()
-def export_chat_history(
+def read_recent_across_chats(
+    limit: int = 100,
+    cursor: str = "",
+    keyword: str = "",
+    start_time: str = "",
+    end_time: str = "",
+    mode: str = "compact",
+    include_raw_content: bool = False,
+) -> dict[str, Any]:
+    """Read recent messages across chats only; never use this to locate a known chat."""
+    return safe_call(
+        "recent",
+        lambda: service.read_recent_across_chats(
+            limit=limit,
+            cursor=cursor,
+            keyword=keyword,
+            start_time=start_time,
+            end_time=end_time,
+            mode=mode,
+            include_raw_content=include_raw_content,
+        ),
+        mode=mode,
+    )
+
+
+@mcp.tool()
+def export_conversation(
     chat: str,
     member_count: int | None = None,
     min_member_count: int | None = None,
@@ -185,10 +187,10 @@ def export_chat_history(
     end_time: str = "",
     output_dir: str | None = None,
 ) -> dict[str, Any]:
-    """Export all locally available records for one resolved chat."""
+    """Export a conversation permanently only when the user explicitly requests it."""
     return safe_call(
         "export",
-        lambda: service.export_chat_history(
+        lambda: service.export_conversation(
             chat,
             member_count=member_count,
             min_member_count=min_member_count,
@@ -200,17 +202,17 @@ def export_chat_history(
 
 
 @mcp.tool()
-def decode_image(
+def decode_conversation_image(
     chat: str,
     message_id: str,
     output_dir: str | None = None,
     member_count: int | None = None,
     min_member_count: int | None = None,
 ) -> dict[str, Any]:
-    """Decode one image message returned by a history read."""
+    """Decode one image message identified by message_id from a conversation read."""
     return safe_call(
         "image",
-        lambda: service.decode_image(
+        lambda: service.decode_conversation_image(
             chat,
             message_id,
             output_dir=output_dir,

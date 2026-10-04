@@ -75,10 +75,18 @@ class RuntimePaths:
         self.decrypted = self.root / "decrypted"
         self.cache = self.root / "cache"
         self.exports = self.root / "exports"
+        self.snapshots = self.root / "snapshots"
         self.decoded_images = self.root / "decoded_images"
 
     def ensure(self) -> None:
-        for path in (self.root, self.decrypted, self.cache, self.exports, self.decoded_images):
+        for path in (
+            self.root,
+            self.decrypted,
+            self.cache,
+            self.exports,
+            self.snapshots,
+            self.decoded_images,
+        ):
             path.mkdir(parents=True, exist_ok=True)
 
 
@@ -241,7 +249,7 @@ def detect_db_dir(
 
     if not allow_discovery:
         raise ReaderUnavailableError(
-            "No WeChat database path is configured. Run initialize_wechat_history first.",
+            "No WeChat database path is configured. Run configure_history first.",
             status="configuration_missing",
         )
 
@@ -582,7 +590,7 @@ class LocalHistoryBackend:
         self,
         query: str,
         *,
-        groups_only: bool = False,
+        chat_kind: str = "any",
         member_count: int | None = None,
         min_member_count: int | None = None,
     ) -> list[dict[str, Any]]:
@@ -590,14 +598,19 @@ class LocalHistoryBackend:
         query_folded = normalize_chat_search_text(query)
         if not query_folded:
             return []
-        cache_key = (query_folded, groups_only, member_count, min_member_count)
+        if chat_kind not in {"any", "direct", "group"}:
+            raise ValueError("chat_kind must be any, direct, or group")
+        cache_key = (query_folded, chat_kind, member_count, min_member_count)
         cached = self._candidate_cache.get(cache_key)
         if cached is not None:
             return [dict(candidate) for candidate in cached]
 
         if query.startswith("wxid_") or "@chatroom" in query:
             is_group = "@chatroom" in query
-            if groups_only and not is_group:
+            if (
+                (chat_kind == "group" and not is_group)
+                or (chat_kind == "direct" and is_group)
+            ):
                 return []
             member_counts = self._group_member_counts() if is_group else {}
             candidate = {
@@ -622,7 +635,10 @@ class LocalHistoryBackend:
             remark = contact.get("remark", "")
             display_name = remark or nick_name or username
             is_group = "@chatroom" in username
-            if groups_only and not is_group:
+            if (
+                (chat_kind == "group" and not is_group)
+                or (chat_kind == "direct" and is_group)
+            ):
                 continue
             fields = [display_name, nick_name, remark, username]
             score = max(
@@ -665,17 +681,18 @@ class LocalHistoryBackend:
         self._candidate_cache[cache_key] = [dict(candidate) for candidate in selected]
         return selected
 
-    def search_chats(
+    def find_conversations(
         self,
         query: str,
         *,
         limit: int = 20,
+        chat_kind: str = "any",
         member_count: int | None = None,
         min_member_count: int | None = None,
     ) -> list[dict[str, Any]]:
         return self.find_chat_candidates(
             query,
-            groups_only=True,
+            chat_kind=chat_kind,
             member_count=member_count,
             min_member_count=min_member_count,
         )[: validate_limit(limit)]
@@ -861,7 +878,15 @@ class LocalHistoryBackend:
             )
         return merge_message_page(entries, limit=limit, before=before)
 
-    def iter_chat_records(self, chat_id: str, *, start_time: str, end_time: str):
+    def iter_chat_records(
+        self,
+        chat_id: str,
+        *,
+        start_time: str,
+        end_time: str,
+        keyword: str = "",
+        include_raw_content: bool = True,
+    ):
         names = self.reader.get_contact_names()
         chat_name = names.get(chat_id, chat_id)
         entries = []
@@ -872,15 +897,21 @@ class LocalHistoryBackend:
                     chat_id=chat_id,
                     chat_name=chat_name,
                     is_group="@chatroom" in chat_id,
-                    keyword="",
+                    keyword=keyword,
                     start_time=start_time,
                     end_time=end_time,
                     candidate_limit=None,
                     before=None,
-                    include_raw_content=True,
+                    include_raw_content=include_raw_content,
                 )
             )
-        entries.sort(key=lambda item: (item["timestamp_unix"], item["message_id"]))
+        entries.sort(
+            key=lambda item: (
+                item["timestamp_unix"],
+                item.get("source_db", ""),
+                item.get("local_id", 0),
+            )
+        )
         yield from entries
 
     def _search_contexts_for_db(

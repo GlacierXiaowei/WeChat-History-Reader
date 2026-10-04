@@ -18,12 +18,18 @@ def validate_limit(limit: int) -> int:
     return limit
 
 
-def make_cursor(anchor: dict[str, Any]) -> str:
+def make_cursor(
+    anchor: dict[str, Any],
+    *,
+    context: dict[str, Any] | None = None,
+) -> str:
     normalized = {
         "timestamp_unix": int(anchor["timestamp_unix"]),
         "source_db": str(anchor["source_db"]),
         "local_id": int(anchor["local_id"]),
     }
+    if context:
+        normalized["context"] = dict(context)
     payload = json.dumps(normalized, separators=(",", ":"), sort_keys=True).encode("utf-8")
     return base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
 
@@ -36,7 +42,12 @@ def parse_cursor(cursor: str | None) -> dict[str, Any] | None:
             raise ValueError
         padding = "=" * (-len(cursor) % 4)
         value = json.loads(base64.urlsafe_b64decode(cursor + padding).decode("utf-8"))
-        if set(value) != {"timestamp_unix", "source_db", "local_id"}:
+        if not isinstance(value, dict):
+            raise ValueError
+        allowed = {"timestamp_unix", "source_db", "local_id", "context"}
+        if set(value) - allowed:
+            raise ValueError
+        if set(value) - {"context"} != {"timestamp_unix", "source_db", "local_id"}:
             raise ValueError
         if (
             isinstance(value["timestamp_unix"], bool)
@@ -48,6 +59,8 @@ def parse_cursor(cursor: str | None) -> dict[str, Any] | None:
             or not isinstance(value["local_id"], int)
             or value["local_id"] < 0
         ):
+            raise ValueError
+        if "context" in value and not isinstance(value["context"], dict):
             raise ValueError
     except (TypeError, ValueError, KeyError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ValueError("invalid cursor") from exc

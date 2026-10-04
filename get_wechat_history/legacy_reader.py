@@ -802,10 +802,27 @@ def _parse_time_value(value, field_name, is_end=False):
     if not value:
         return None
 
+    if re.fullmatch(r'\d{4}-\d{2}-\d{2}', value):
+        try:
+            dt = datetime.strptime(value, '%Y-%m-%d')
+        except ValueError:
+            dt = None
+        if dt is not None:
+            if is_end:
+                dt = dt.replace(hour=23, minute=59, second=59)
+            return int(dt.timestamp())
+
+    iso_value = value[:-1] + '+00:00' if value.endswith(('Z', 'z')) else value
+    try:
+        dt = datetime.fromisoformat(iso_value)
+    except ValueError:
+        dt = None
+    if dt is not None and (('T' in value) or dt.tzinfo is not None):
+        return int(dt.timestamp())
+
     formats = [
         ('%Y-%m-%d %H:%M:%S', False),
         ('%Y-%m-%d %H:%M', False),
-        ('%Y-%m-%d', True),
     ]
     for fmt, date_only in formats:
         try:
@@ -817,7 +834,7 @@ def _parse_time_value(value, field_name, is_end=False):
             continue
 
     raise ValueError(
-        f"{field_name} 格式无效: {value}。支持 YYYY-MM-DD / YYYY-MM-DD HH:MM / YYYY-MM-DD HH:MM:SS"
+        f"{field_name} 格式无效: {value}。支持 YYYY-MM-DD、YYYY-MM-DD HH:MM[:SS] 或 ISO-8601"
     )
 
 
@@ -1322,9 +1339,23 @@ def _search_all_messages(keyword, start_ts, end_ts, start_time, end_time, limit,
     return header + ":\n\n" + "\n\n".join(item[1] for item in paged)
 
 
-# ============ MCP Server ============
+# ============ Legacy helper surface ============
 
-mcp = FastMCP("wechat", instructions="查询微信消息、联系人等数据")
+
+class _LegacyToolRegistry:
+    """Keep legacy helper functions importable without exposing old MCP tools."""
+
+    @staticmethod
+    def tool():
+        return lambda function: function
+
+    @staticmethod
+    def run(*args, **kwargs):
+        del args, kwargs
+        raise SystemExit("Use python -m get_wechat_history.mcp_server for the 2.0 MCP server.")
+
+
+mcp = _LegacyToolRegistry()
 
 # 新消息追踪
 _last_check_state = {}  # {username: last_timestamp}

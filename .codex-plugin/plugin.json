@@ -1,22 +1,22 @@
 {
   "name": "get-wechat-history",
-  "version": "1.1.0",
-  "description": "Search, read, and export local WeChat history through a read-only MCP server with bounded freshness caching.",
+  "version": "2.0.0",
+  "description": "Read compact local WeChat history through a focused read-only MCP server.",
   "author": {
     "name": "Glacier Xiaowei"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Get Wechat History",
-    "shortDescription": "Read fresh local WeChat history.",
-    "longDescription": "Initializes and diagnoses the local WeChat history reader, checks freshness on demand, searches fuzzy group names before reading a selected chat, returns compact message pages, exports complete chat history, and decodes requested image messages.",
+    "shortDescription": "Read compact local WeChat history.",
+    "longDescription": "Configures and diagnoses the local WeChat history reader, reads known conversations directly as compact AI rows, finds ambiguous conversations, reads recent messages across chats, creates fixed machine snapshots for long reads, exports explicit requests, and decodes requested image messages.",
     "developerName": "Glacier Xiaowei",
     "category": "Productivity",
     "capabilities": [
       "MCP server",
       "Skill"
     ],
-    "defaultPrompt": "Check history freshness once, search a vague group name when needed, then read only the minimum WeChat messages needed for my request."
+    "defaultPrompt": "For a known contact, group, or chat_id call read_conversation directly. Use find_conversations only for ambiguous names, and use read_recent_across_chats only for cross-chat recency. Default to compact AI rows; use records for evidence and create_snapshot for long fixed reads."
   },
   "mcpServers": "./.mcp.json"
 }

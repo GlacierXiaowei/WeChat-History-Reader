@@ -60,7 +60,7 @@ class HistoryDoctor:
         if not configured:
             return self._response(
                 "configuration_missing",
-                error="No WeChat database path is configured. Run initialize_wechat_history first.",
+                error="No WeChat database path is configured. Run configure_history first.",
             )
         if not Path(configured).is_dir():
             return self._response(
