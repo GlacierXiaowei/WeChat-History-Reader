@@ -69,7 +69,7 @@ class ReaderUnavailableError(RuntimeError):
 class RuntimePaths:
     def __init__(self, state_root: str | os.PathLike[str] | None = None):
         local_app_data = os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()
-        self.root = Path(state_root) if state_root else Path(local_app_data) / "GetWechatHistory"
+        self.root = Path(state_root) if state_root else Path(local_app_data) / "WeChatHistoryReader"
         self.config = self.root / "config.json"
         self.keys = self.root / "all_keys.json"
         self.decrypted = self.root / "decrypted"
@@ -235,7 +235,7 @@ def detect_db_dir(
 ) -> Path:
     configured = str(configured_db_dir or "").strip()
     if not configured:
-        configured = os.environ.get("GET_WECHAT_HISTORY_DB_DIR", "").strip()
+        configured = os.environ.get("WECHAT_HISTORY_READER_DB_DIR", "").strip()
     if not configured:
         configured = str(_read_json(paths.config).get("db_dir", "")).strip()
     if configured:

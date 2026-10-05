@@ -1,9 +1,9 @@
 ---
-name: get-wechat-history
+name: wechat-history-reader
 description: Read, configure, diagnose, search, and export local WeChat history through the 2.0 MCP tools.
 ---
 
-# Get WeChat History 2.0
+# WeChat History Reader 2.0
 
 Use only the plugin MCP tools. Do not use shell commands, folder scans, or
 another tool as a substitute for local WeChat history.

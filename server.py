@@ -1,6 +1,6 @@
 """Compatibility entrypoint for local plugin installations."""
 
-from get_wechat_history.mcp_server import (
+from wechat_history_reader.mcp_server import (
     check_history,
     configure_history,
     decode_conversation_image,

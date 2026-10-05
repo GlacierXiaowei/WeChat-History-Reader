@@ -12,7 +12,7 @@ from pathlib import Path
 
 PACKAGE_VERSION = "2.0.0"
 MISSING_PYTHON_MESSAGE = (
-    "Get Wechat History requires Python 3.10 or newer. "
+    "WeChat History Reader requires Python 3.10 or newer. "
     "Install Python 3.10+ and make sure the Windows Python launcher or python command is available."
 )
 
@@ -23,7 +23,7 @@ def plugin_root() -> Path:
 
 def runtime_root() -> Path:
     local_app_data = os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()
-    return Path(local_app_data) / "GetWechatHistory" / "runtime"
+    return Path(local_app_data) / "WeChatHistoryReader" / "runtime"
 
 
 def venv_root() -> Path:
@@ -38,7 +38,7 @@ def build_server_command(venv_root_path: Path) -> list[str]:
     scripts_dir = "Scripts" if os.name == "nt" else "bin"
     python_name = "python.exe" if os.name == "nt" else "python"
     python_exe = venv_root_path / scripts_dir / python_name
-    return [str(python_exe), "-m", "get_wechat_history.mcp_server"]
+    return [str(python_exe), "-m", "wechat_history_reader.mcp_server"]
 
 
 def build_install_command(venv_root_path: Path, root: Path) -> list[str]:
@@ -70,7 +70,7 @@ def _source_hash(root: Path) -> str:
     }
     source_suffixes = {".py", ".pyi", ".js", ".json", ".pyd", ".dll"}
     for directory, suffixes in (
-        (root / "get_wechat_history", source_suffixes),
+        (root / "wechat_history_reader", source_suffixes),
         (root / "scripts", source_suffixes | {".cmd", ".bat", ".ps1", ".sh"}),
     ):
         if not directory.is_dir():
@@ -83,7 +83,7 @@ def _source_hash(root: Path) -> str:
             and "__pycache__" not in path.relative_to(directory).parts
         )
 
-    digest = hashlib.sha256(b"get-wechat-history-runtime-v2\0")
+    digest = hashlib.sha256(b"wechat-history-reader-runtime-v2\0")
     for path in sorted(files, key=lambda item: item.relative_to(root).as_posix()):
         digest.update(path.relative_to(root).as_posix().encode("utf-8"))
         digest.update(b"\0")

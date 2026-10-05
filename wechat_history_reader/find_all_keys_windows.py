@@ -35,7 +35,7 @@ class ScanDiagnostics:
     def __call__(self, stage: str, **fields):
         event = {"stage": stage, **fields}
         self.events.append(event)
-        if os.environ.get("GET_WECHAT_HISTORY_DEBUG") == "1":
+        if os.environ.get("WECHAT_HISTORY_READER_DEBUG") == "1":
             print(json.dumps(event, ensure_ascii=True), file=sys.stderr, flush=True)
 
     def save(self) -> None:

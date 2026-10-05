@@ -1,22 +1,26 @@
 {
-  "name": "get-wechat-history",
+  "name": "wechat-history-reader",
   "version": "2.0.0",
-  "description": "Read compact local WeChat history through a focused read-only MCP server.",
+  "description": "Let AI agents read, find, and summarize local WeChat chats.",
   "author": {
     "name": "Glacier Xiaowei"
   },
   "skills": "./skills/",
   "interface": {
-    "displayName": "Get Wechat History",
-    "shortDescription": "Read compact local WeChat history.",
-    "longDescription": "Configures and diagnoses the local WeChat history reader, reads known conversations directly as compact AI rows, finds ambiguous conversations, reads recent messages across chats, creates fixed machine snapshots for long reads, exports explicit requests, and decodes requested image messages.",
+    "displayName": "WeChat History Reader",
+    "shortDescription": "让 AI 读取你的微信聊天",
+    "longDescription": "WeChat History Reader 是一个开源本地插件，让 AI Agent 直接读取、搜索和总结微信聊天记录，帮助 Agent 更好地理解你的工作和生活。它提供面向 AI 优化的紧凑结构化读取、模糊搜索、分页和长聊天快照，并且不上传聊天内容、不修改微信原始聊天记录，读取和处理都在本机完成。",
     "developerName": "Glacier Xiaowei",
     "category": "Productivity",
     "capabilities": [
       "MCP server",
       "Skill"
     ],
-    "defaultPrompt": "For a known contact, group, or chat_id call read_conversation directly. Use find_conversations only for ambiguous names, and use read_recent_across_chats only for cross-chat recency. Default to compact AI rows; use records for evidence and create_snapshot for long fixed reads."
+    "defaultPrompt": [
+      "帮我总结我和某人的最近讨论",
+      "找出群里关于某件事的最终决定",
+      "整理过去一个月聊天中提到的待办事项"
+    ]
   },
   "mcpServers": "./.mcp.json"
 }

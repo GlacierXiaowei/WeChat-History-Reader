@@ -49,7 +49,7 @@ class HistoryService:
         backend_root = getattr(backend_paths, "root", None)
         if backend_root is not None:
             return Path(backend_root) / "snapshots"
-        return Path(tempfile.gettempdir()) / "GetWechatHistory" / "snapshots"
+        return Path(tempfile.gettempdir()) / "WeChatHistoryReader" / "snapshots"
 
     def configure_history(self, db_dir: str = "", *, discover: bool = False) -> dict[str, Any]:
         with self._lock:

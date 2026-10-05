@@ -17,9 +17,9 @@ service = HistoryService(
     state_root=paths.root,
 )
 mcp = FastMCP(
-    "get-wechat-history",
+    "wechat-history-reader",
     instructions=(
-        "Get WeChat History 2.0. Configure or check only for setup. "
+        "WeChat History Reader 2.0. Configure or check only for setup. "
         "For a known contact, group, or chat_id call read_conversation directly. "
         "Use find_conversations only for ambiguous lookup; never use "
         "read_recent_across_chats to locate a known chat. Reads default to compact "

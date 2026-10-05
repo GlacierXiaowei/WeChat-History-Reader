@@ -1,0 +1,16 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "wechat-history-reader": {
+      "type": "stdio",
+      "command": "cmd.exe",
+      "args": [
+        "/d",
+        "/s",
+        "/c",
+        "scripts\\plugin_bootstrap.cmd"
+      ],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}

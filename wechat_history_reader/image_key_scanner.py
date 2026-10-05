@@ -29,7 +29,7 @@ IMAGE_KEY_SCAN_TIMEOUT_SECONDS = 8.0
 
 
 def print(*args, **kwargs):
-    if os.environ.get("GET_WECHAT_HISTORY_DEBUG") != "1":
+    if os.environ.get("WECHAT_HISTORY_READER_DEBUG") != "1":
         return
     kwargs.setdefault("file", sys.stderr)
     kwargs.setdefault("flush", True)

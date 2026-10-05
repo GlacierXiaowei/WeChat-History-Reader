@@ -24,7 +24,7 @@ class RuntimeState:
 
     def __init__(self, root: str | os.PathLike[str] | None = None):
         local_app_data = os.environ.get("LOCALAPPDATA") or tempfile.gettempdir()
-        self.root = Path(root) if root else Path(local_app_data) / "GetWechatHistory"
+        self.root = Path(root) if root else Path(local_app_data) / "WeChatHistoryReader"
         self.path = self.root / "config.json"
 
     def _read_raw(self) -> dict[str, Any]:

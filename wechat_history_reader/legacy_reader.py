@@ -1352,7 +1352,7 @@ class _LegacyToolRegistry:
     @staticmethod
     def run(*args, **kwargs):
         del args, kwargs
-        raise SystemExit("Use python -m get_wechat_history.mcp_server for the 2.0 MCP server.")
+        raise SystemExit("Use python -m wechat_history_reader.mcp_server for the 2.0 MCP server.")
 
 
 mcp = _LegacyToolRegistry()

@@ -15,5 +15,5 @@ python "%~dp0plugin_bootstrap.py"
 exit /b %errorlevel%
 
 :missing_python
->&2 echo Get Wechat History requires Python 3.10 or newer. Install Python 3.10+ and retry.
+>&2 echo WeChat History Reader requires Python 3.10 or newer. Install Python 3.10+ and retry.
 exit /b 1
