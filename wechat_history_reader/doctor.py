@@ -15,6 +15,8 @@ def detect_wechat_process() -> bool:
             ["tasklist.exe", "/FO", "CSV", "/NH"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             check=False,
         )
     except OSError:
@@ -78,6 +80,7 @@ class HistoryDoctor:
                 configured_db_dir=configured,
                 allow_discovery=False,
                 allow_key_scan=False,
+                read_only=True,
             )
             return self._response(
                 "ready",

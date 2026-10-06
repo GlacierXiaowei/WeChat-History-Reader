@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-PACKAGE_VERSION = "2.1.0"
+PACKAGE_VERSION = "2.1.1"
 MINIMUM_PYTHON = (3, 10)
 REQUIRED_DEPENDENCIES = {
     "pycryptodome": ("3.23.0", "Crypto"),
@@ -98,11 +98,6 @@ def build_host_cli_command(
         "wechat_history_reader.cli",
         *(arguments or []),
     ]
-
-
-def build_server_command(venv_root_path: Path) -> list[str]:
-    """Legacy 2.0 helper retained for callers inspecting old installations."""
-    return [str(_venv_python(venv_root_path)), "-m", "wechat_history_reader.mcp_server"]
 
 
 def build_install_command(venv_root_path: Path, root: Path) -> list[str]:
@@ -298,9 +293,13 @@ def _python_version(python_executable: Path) -> str:
 
 def _create_venv(host_python: Path, environment: Path) -> None:
     del host_python
-    if environment.exists():
+    if environment.exists() and _venv_python(environment).is_file():
         return
-    venv.EnvBuilder(with_pip=True, clear=False, symlinks=False).create(environment)
+    venv.EnvBuilder(
+        with_pip=True,
+        clear=environment.exists(),
+        symlinks=False,
+    ).create(environment)
 
 
 _PROBE_SCRIPT = r"""
@@ -323,12 +322,19 @@ print(json.dumps(result))
 
 
 def _probe_dependencies(python_executable: Path) -> dict[str, Any]:
-    completed = subprocess.run(
-        [str(python_executable), "-c", _PROBE_SCRIPT],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            [str(python_executable), "-c", _PROBE_SCRIPT],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        return {
+            "python_version": "",
+            "dependencies": {},
+            "probe_error": str(exc),
+        }
     if completed.returncode != 0:
         return {
             "python_version": "",
@@ -373,7 +379,7 @@ def _dependencies_ok(probe: dict[str, Any]) -> bool:
 
 
 def ensure_runtime(root: Path | None = None) -> RuntimeReport:
-    root = (root or plugin_root()).resolve()
+    root = Path(root or plugin_root()).resolve()
     marker = install_marker_path()
     environment = venv_root()
     host = _resolve_host_python()

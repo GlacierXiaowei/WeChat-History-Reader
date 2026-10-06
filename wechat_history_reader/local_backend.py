@@ -329,6 +329,7 @@ class LocalHistoryBackend:
         allow_key_scan: bool = False,
         force: bool = False,
         reuse: bool = False,
+        read_only: bool = False,
     ) -> dict[str, Any]:
         previous_db_dir = self.db_dir
         try:
@@ -338,6 +339,7 @@ class LocalHistoryBackend:
                 allow_key_scan=allow_key_scan,
                 force=force,
                 reuse=reuse,
+                read_only=read_only,
             )
         except Exception:
             self.db_dir = previous_db_dir
@@ -351,6 +353,7 @@ class LocalHistoryBackend:
         allow_key_scan: bool = False,
         force: bool = False,
         reuse: bool = False,
+        read_only: bool = False,
     ) -> dict[str, Any]:
         explicit_configuration = configured_db_dir is not None or allow_discovery or allow_key_scan
         force = force or explicit_configuration
@@ -371,7 +374,8 @@ class LocalHistoryBackend:
             )
             return snapshot
 
-        self.paths.ensure()
+        if not read_only:
+            self.paths.ensure()
         if configured_db_dir is None and not allow_discovery and self.db_dir is not None:
             configured_db_dir = self.db_dir
         self.db_dir = detect_db_dir(
@@ -444,26 +448,28 @@ class LocalHistoryBackend:
         source_changed = signature != self._last_signature
         keys_changed = keys_signature != self._reader_keys_signature
         first_configuration = self._reader_config_key is None
-        try:
-            if first_configuration or reader_config_key != self._reader_config_key:
-                self.reader.configure_reader(*reader_config_key)
-                self._reader_config_key = reader_config_key
-            elif source_changed or keys_changed:
-                self._refresh_reader_metadata()
-        except Exception as exc:
-            raise ReaderUnavailableError(
-                "The cached WeChat keys do not match this database path. Reinitialize this account.",
-                status="key_mismatch",
-            ) from exc
+        if not read_only:
+            try:
+                if first_configuration or reader_config_key != self._reader_config_key:
+                    self.reader.configure_reader(*reader_config_key)
+                    self._reader_config_key = reader_config_key
+                elif source_changed or keys_changed:
+                    self._refresh_reader_metadata()
+            except Exception as exc:
+                raise ReaderUnavailableError(
+                    "The cached WeChat keys do not match this database path. Reinitialize this account.",
+                    status="key_mismatch",
+                ) from exc
 
-        if first_configuration or source_changed or keys_changed:
+        if not read_only and (first_configuration or source_changed or keys_changed):
             self._clear_query_metadata_caches(
                 invalidate_reader_cache=not first_configuration and (source_changed or keys_changed)
             )
-        self._message_db_keys = discover_message_db_keys(self.db_dir)
-        self._last_signature = signature
-        self._reader_keys_signature = keys_signature
-        self._last_refresh_monotonic = now
+        if not read_only:
+            self._message_db_keys = discover_message_db_keys(self.db_dir)
+            self._last_signature = signature
+            self._reader_keys_signature = keys_signature
+            self._last_refresh_monotonic = now
         self._snapshot = {
             "snapshot_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "source_changed": source_changed,
@@ -471,9 +477,13 @@ class LocalHistoryBackend:
             "database_count": len(databases),
             "key_validated_count": len(databases),
             **validation,
-            "cache_status": "refreshed",
+            "cache_status": "read_only" if read_only else "refreshed",
             "cache_age_seconds": 0.0,
-            "refresh_reason": "forced" if force else "expired_or_initial",
+            "refresh_reason": (
+                "read_only"
+                if read_only
+                else ("forced" if force else "expired_or_initial")
+            ),
         }
         return dict(self._snapshot)
 

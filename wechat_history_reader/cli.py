@@ -128,7 +128,7 @@ def _dispatch(arguments: argparse.Namespace, service: Any) -> dict[str, Any]:
     command = arguments.command
     if command == "doctor":
         doctor = RuntimeDoctor(backend=service.backend, state_root=service.state_root)
-        return doctor.repair(arguments.state_root) if arguments.repair else doctor.check(arguments.state_root)
+        return doctor.repair() if arguments.repair else doctor.check()
     if command == "configure-history":
         return safe_call(
             "configure",
@@ -229,7 +229,7 @@ def main(argv: list[str] | None = None, *, service: Any = None) -> int:
             service = create_service(arguments.state_root)
         result = _dispatch(arguments, service)
         print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
-        return 0 if result.get("status") not in {"error", "python_missing", "python_unsupported"} else 1
+        return 0 if result.get("status") in {"ok", "ready"} else 1
     except CliUsageError as exc:
         print(json.dumps({"status": "error", "error": str(exc)}, ensure_ascii=False))
         return 2

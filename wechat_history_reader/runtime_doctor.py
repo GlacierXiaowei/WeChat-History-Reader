@@ -23,7 +23,7 @@ class RuntimeDoctor:
         return value if isinstance(value, dict) else {}
 
     def check(self, root: Path | None = None) -> dict[str, Any]:
-        package_root = (root or bootstrap.plugin_root()).resolve()
+        package_root = Path(root or bootstrap.plugin_root()).resolve()
         host = bootstrap._resolve_host_python()
         python_version = ""
         python_supported = False

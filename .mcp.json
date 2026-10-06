@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "wechat-history-reader": {
-      "command": "cmd.exe",
-      "args": ["/d", "/s", "/c", "scripts\\plugin_bootstrap.cmd"],
-      "cwd": "."
-    }
-  }
-}

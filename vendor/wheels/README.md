@@ -1,6 +1,6 @@
 # Offline runtime wheels
 
-This directory is part of the 2.1.0 plugin package. It contains the pinned
+This directory is part of the 2.1.1 plugin package. It contains the pinned
 `pycryptodome` and `zstandard` Windows x64 wheels used by the first-use
 bootstrap. The plugin never downloads project dependencies from PyPI at
 runtime.

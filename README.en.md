@@ -4,9 +4,9 @@ WeChat History Reader is a local Skill for reading, searching, paging,
 exporting, and decoding a user's WeChat history. Chat content stays on the
 machine and the original WeChat databases are never modified.
 
-## How 2.1.0 Runs
+## How 2.1.1 Runs
 
-The public 2.1.0 package contains a Skill and a local JSON CLI. It does not
+The public 2.1.1 package contains a Skill and a local JSON CLI. It does not
 load MCP. Every business operation goes through the bundled launcher:
 
 ```text
@@ -86,6 +86,5 @@ decrypted caches, snapshots, exports, and decoded images live under
 
 ## Version Boundary
 
-2.1.0 does not reintroduce MCP. The 2.0 MCP interface remains available only
-through the 2.0 release line; do not copy its manifests or server entrypoint
-into a 2.1.0 package.
+2.1.1 contains no MCP interface. The old MCP manifests and server entrypoint
+are intentionally absent from the formal source tree.

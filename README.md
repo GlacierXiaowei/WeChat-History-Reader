@@ -6,9 +6,9 @@
 搜索、分页、导出和解码本机微信聊天记录。聊天内容不会上传，也不会修改
 微信原始数据库。
 
-## 2.1.0 的运行方式
+## 2.1.1 的运行方式
 
-2.1.0 公开插件只包含 Skill 和本地 JSON CLI，不加载 MCP。所有业务命令都
+2.1.1 公开插件只包含 Skill 和本地 JSON CLI，不加载 MCP。所有业务命令都
 通过 `scripts/plugin_bootstrap.cmd` 启动：
 
 ```text
@@ -87,5 +87,5 @@ scripts/plugin_bootstrap.cmd decode-image --chat "联系人" --message-id "<mess
 
 ## 版本边界
 
-2.1.0 不重新引入 MCP。2.0 MCP 接口只在 2.0 release line 中保留；不要把
-2.0 的 MCP 清单或 server 入口复制到 2.1.0 包中。
+2.1.1 不包含 MCP。2.0 MCP 接口不属于当前正式目录，也不会复制到 2.1.1
+包中。

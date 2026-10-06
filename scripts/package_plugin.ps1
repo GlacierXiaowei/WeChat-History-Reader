@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $BuildRoot = Join-Path $Root "build"
-$Stage = Join-Path $BuildRoot "package-staging\2.1.0"
+$Stage = Join-Path $BuildRoot "package-staging\2.1.1"
 
 New-Item -ItemType Directory -Force -Path $BuildRoot | Out-Null
 $ResolvedBuild = (Resolve-Path $BuildRoot).Path.TrimEnd("\")
@@ -64,7 +64,7 @@ Get-ChildItem -LiteralPath $Stage -Recurse -File -Filter "*.pyc" -ErrorAction Si
     Remove-Item -Force
 
 $manifest = Get-Content -Raw (Join-Path $Stage ".codex-plugin\plugin.json") | ConvertFrom-Json
-if ($manifest.version -ne "2.1.0") {
+if ($manifest.version -ne "2.1.1") {
     throw "Unexpected staged plugin version: $($manifest.version)"
 }
 if (($manifest.interface.capabilities -join ",") -ne "Skill") {
@@ -93,7 +93,7 @@ if ((Get-Content -Raw (Join-Path $Stage "pyproject.toml")) -match "(?im)^\s*['""
 if (-not $CheckOnly) {
     $Dist = Join-Path $Root "dist"
     New-Item -ItemType Directory -Force -Path $Dist | Out-Null
-    $Archive = Join-Path $Dist "wechat-history-reader-2.1.0.zip"
+    $Archive = Join-Path $Dist "wechat-history-reader-2.1.1.zip"
     if (Test-Path -LiteralPath $Archive) {
         Remove-Item -LiteralPath $Archive -Force
     }

@@ -88,7 +88,10 @@ class HistoryService:
         snapshot = self.backend.prepare(**kwargs)
         if snapshot.get("cache_status") == "refreshed":
             self._result_cache.clear()
-            self._bump_read_epoch()
+            source_signature = str(snapshot.get("source_signature") or "")
+            if source_signature:
+                self._read_generation.observe_source(source_signature)
+                self._sync_read_epoch()
         return snapshot
 
     @staticmethod
@@ -450,9 +453,8 @@ class HistoryService:
     def refresh_history(self) -> dict[str, Any]:
         with self._lock:
             snapshot = self._prepare(force=True)
-            if snapshot.get("cache_status") != "refreshed":
-                self._result_cache.clear()
-                self._bump_read_epoch()
+            self._result_cache.clear()
+            self._bump_read_epoch()
             return {
                 "status": "ok",
                 "refreshed_at": snapshot.get("snapshot_at", ""),

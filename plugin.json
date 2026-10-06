@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "wechat-history-reader",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Let AI agents read, find, and summarize local WeChat chats.",
   "author": {
     "name": "Glacier Xiaowei"
