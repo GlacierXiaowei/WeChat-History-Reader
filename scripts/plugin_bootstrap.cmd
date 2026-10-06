@@ -5,13 +5,13 @@ where py >nul 2>&1
 if errorlevel 1 goto try_python
 py -3.10 -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" >nul 2>&1
 if errorlevel 1 goto try_python
-py -3.10 "%~dp0plugin_bootstrap.py"
+py -3.10 "%~dp0plugin_bootstrap.py" run -- %*
 exit /b %errorlevel%
 
 :try_python
 where python >nul 2>&1
 if errorlevel 1 goto missing_python
-python "%~dp0plugin_bootstrap.py"
+python "%~dp0plugin_bootstrap.py" run -- %*
 exit /b %errorlevel%
 
 :missing_python

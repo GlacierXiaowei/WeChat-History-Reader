@@ -15,6 +15,7 @@ from typing import Any
 from .contracts import make_cursor, parse_cursor, resolve_candidate, validate_limit
 from .doctor import HistoryDoctor
 from .initializer import HistoryInitializer
+from .read_generation import ReadGenerationStore
 from .snapshot_store import ConversationSnapshotStore
 
 
@@ -40,8 +41,22 @@ class HistoryService:
         self._lock = threading.RLock()
         self._result_cache: OrderedDict[tuple[str, str, str], dict[str, Any]] = OrderedDict()
         self._result_cache_limit = 64
-        self._read_epoch = 0
+        generation_root = state_root
+        if generation_root is None:
+            backend_paths = getattr(self.backend, "paths", None)
+            generation_root = getattr(backend_paths, "root", None)
+        if generation_root is None:
+            generation_root = Path(tempfile.mkdtemp(prefix="wechat-history-reader-state-"))
+        self._read_generation = ReadGenerationStore(generation_root)
+        self._read_epoch = self._read_generation.load()
         self.snapshot_store = ConversationSnapshotStore(self._snapshot_root(state_root))
+
+    def _sync_read_epoch(self) -> None:
+        self._read_epoch = self._read_generation.load()
+
+    def _bump_read_epoch(self) -> int:
+        self._read_epoch = self._read_generation.bump()
+        return self._read_epoch
 
     def _snapshot_root(self, state_root: Any) -> Path:
         if state_root is not None:
@@ -59,7 +74,7 @@ class HistoryService:
                 discover=discover,
             )
             self._result_cache.clear()
-            self._read_epoch += 1
+            self._bump_read_epoch()
             return result
 
     def check_history(self, *, process_probe: Any = None) -> dict[str, Any]:
@@ -73,7 +88,7 @@ class HistoryService:
         snapshot = self.backend.prepare(**kwargs)
         if snapshot.get("cache_status") == "refreshed":
             self._result_cache.clear()
-            self._read_epoch += 1
+            self._bump_read_epoch()
         return snapshot
 
     @staticmethod
@@ -288,13 +303,13 @@ class HistoryService:
             current = bool(checker(snapshot))
         except Exception as exc:
             self._result_cache.clear()
-            self._read_epoch += 1
+            self._bump_read_epoch()
             raise ValueError(
                 "could not verify the source; refresh_history and start a new read"
             ) from exc
         if not current:
             self._result_cache.clear()
-            self._read_epoch += 1
+            self._bump_read_epoch()
             raise ValueError(
                 "source changed during pagination; refresh_history and start a new read"
             )
@@ -435,6 +450,9 @@ class HistoryService:
     def refresh_history(self) -> dict[str, Any]:
         with self._lock:
             snapshot = self._prepare(force=True)
+            if snapshot.get("cache_status") != "refreshed":
+                self._result_cache.clear()
+                self._bump_read_epoch()
             return {
                 "status": "ok",
                 "refreshed_at": snapshot.get("snapshot_at", ""),
@@ -620,6 +638,7 @@ class HistoryService:
 
         parsed_cursor = parse_cursor(cursor)
         with self._lock:
+            self._sync_read_epoch()
             if create_snapshot:
                 return self._create_snapshot(
                     chat_value,
@@ -744,6 +763,7 @@ class HistoryService:
             raise ValueError("include_raw_content=true requires mode=records")
         parsed_cursor = parse_cursor(cursor)
         with self._lock:
+            self._sync_read_epoch()
             snapshot = self._prepare()
             binding = self._cursor_binding(
                 "recent",

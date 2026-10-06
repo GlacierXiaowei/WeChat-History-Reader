@@ -4,11 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wechat-history-reader"
-version = "2.0.1"
+version = "2.1.0"
 description = "Let AI agents read, find, and summarize local WeChat chats."
 requires-python = ">=3.10"
 dependencies = [
-  "mcp>=1.26,<2",
   "pycryptodome>=3.23,<4",
   "zstandard>=0.22,<1",
 ]

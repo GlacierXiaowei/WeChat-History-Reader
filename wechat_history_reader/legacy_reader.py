@@ -1,8 +1,8 @@
 r"""
-WeChat MCP Server - query WeChat messages, contacts via Claude
+WeChat legacy reader - query WeChat messages and contacts
 
-Based on FastMCP (stdio transport), reuses existing decryption.
-Runs on Windows Python (needs access to D:\ WeChat databases).
+Reuses the existing decryption implementation.
+Runs on Windows Python (needs access to local WeChat databases).
 """
 
 import os, sys, json, time, sqlite3, tempfile, struct, hashlib, atexit, re
@@ -12,7 +12,6 @@ from datetime import datetime
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from Crypto.Cipher import AES
-from mcp.server.fastmcp import FastMCP
 import zstandard as zstd
 from .decode_image import ImageResolver
 from .key_utils import get_key_info, key_path_variants, strip_key_metadata
@@ -1399,7 +1398,7 @@ class _LegacyToolRegistry:
     @staticmethod
     def run(*args, **kwargs):
         del args, kwargs
-        raise SystemExit("Use python -m wechat_history_reader.mcp_server for the 2.0 MCP server.")
+        raise SystemExit("The legacy reader is not a standalone 2.1.0 entrypoint; use the bundled CLI.")
 
 
 mcp = _LegacyToolRegistry()

@@ -1,79 +1,88 @@
 ---
 name: wechat-history-reader
-description: Read, configure, diagnose, search, and export local WeChat history through the 2.0 MCP tools.
+description: Read, configure, diagnose, search, and export local WeChat history through the bundled offline CLI.
 ---
 
-# WeChat History Reader 2.0
+# WeChat History Reader 2.1
 
-Use only the plugin MCP tools. Do not use shell commands, folder scans, or
-another tool as a substitute for local WeChat history.
+Use the bundled `scripts/plugin_bootstrap.cmd` launcher for every operation.
+The launcher finds the user's Python installation, creates the private runtime
+on first real use, installs missing dependencies from the plugin's local wheel
+bundle, and then runs the JSON CLI. Do not call the system Python directly for
+business operations.
 
-## Setup
+## Prerequisites and Bootstrap
 
-- Use `configure_history` for first configuration or switching the WeChat
-  database directory. Pass a known `db_dir`; use `discover=true` only after
-  explicit permission for one local discovery.
-- Use `check_history` for environment questions or failed reads. It checks the
-  saved path, WeChat process, keys, and database access without changing keys.
-- Use `refresh_history` only when a fresh source check is needed. A successful
-  refresh response contains only `status` and `refreshed_at`.
-- Keep desktop WeChat logged in during first configuration so account-specific
-  keys can be obtained. A different account or data directory needs a new
-  configuration.
+- The user must install Python 3.10 or newer first. Python itself is not
+  bundled and the plugin never attempts to install it.
+- If bootstrap reports `python_missing` or `python_unsupported`, report the
+  exact error and ask the user to install Python 3.10+, then retry.
+- Runtime dependencies are installed only from `vendor/wheels` with
+  `--no-index`; do not tell the user to install project dependencies from PyPI.
+- The first setup can be inspected with:
 
-## Choosing A Read Tool
+  ```text
+  scripts/plugin_bootstrap.cmd doctor
+  ```
 
-- Known person, group, or `chat_id`: call `read_conversation` directly.
-- Ambiguous, duplicated, or explicitly requested lookup: call
-  `find_conversations` once, then use the selected `chat_id` with
-  `read_conversation`.
-- Never repeatedly search name fragments.
-- Never call `read_recent_across_chats` to locate a known conversation.
-- `read_recent_across_chats` is only for recent messages across multiple chats.
+  `doctor` is read-only. Use `doctor --repair` only when the user explicitly
+  permits dependency repair.
+
+## CLI Commands
+
+- `configure-history --db-dir <path>` configures a known database directory.
+  Use `--discover` only after explicit permission for one local discovery.
+- `doctor` reports runtime health and the existing WeChat path/process/key/
+  database diagnosis.
+- `refresh-history` forces a local source refresh.
+- `find-conversations --query <text>` resolves ambiguous names. Add
+  `--chat-kind`, `--member-count`, or `--min-member-count` when useful.
+- `read-conversation --chat <value>` reads a known conversation.
+- `read-recent` reads recent messages across chats only; never use it to locate
+  a known person or group.
+- `export-conversation --chat <value>` creates permanent files only after the
+  user explicitly requests an export.
+- `decode-image --chat <value> --message-id <id>` decodes one image identified
+  by a prior records read.
+
+Every command writes exactly one JSON object to stdout. Runtime and usage
+errors are written to stderr by the launcher; CLI command errors retain the
+existing `status` and `error` fields and use a non-zero exit code.
 
 ## Read Protocol
 
-- `read_conversation` defaults to `mode="compact"`.
-- Direct compact rows are `time`, `role`, `text`, where `role` is `me` or
-  `other`.
-- Group compact rows are `time`, `sender`, `text`.
-- Cross-chat recent compact rows are `time`, `chat`, `speaker`, `text`.
-- Keep the time on every row.
-- Render non-text messages as short markers such as `[图片]`, `[语音]`, and
-  `[文件]`.
-- The first page declares `kind` and `columns`. Continuations return only rows
-  or messages, count, `has_more`, and `next_cursor`.
-- Do not ask for or generate a human-readable transcript. Compact rows are
-  specifically for AI context reduction.
+- Reads default to `--mode compact`.
+- Direct compact rows are `time`, `role`, `text`; group rows are `time`,
+  `sender`, `text`; recent rows are `time`, `chat`, `speaker`, `text`.
+- Keep the time on every row and render non-text messages as short markers such
+  as `[图片]`, `[语音]`, and `[文件]`.
+- The first page declares `kind` and `columns`. Continuations contain rows or
+  messages, `count`, `has_more`, and `next_cursor`.
+- Use `--mode records` for evidence checks, image decoding, or structured
+  fields. `--include-raw-content` is valid only with records mode.
 
-Use `mode="records"` only for evidence checks, image decoding, or raw field
-inspection. Its standard fields are `message_id`, `timestamp`, `sender_name`,
-`type`, and `text`. `include_raw_content=true` is valid only in records mode.
+## Snapshots and Cursors
 
-## Long Reads
-
-For a very long fixed conversation, call:
+For a long fixed read:
 
 ```text
-read_conversation(chat="...", create_snapshot=true)
+scripts/plugin_bootstrap.cmd read-conversation --chat "..." --create-snapshot
+scripts/plugin_bootstrap.cmd read-conversation --snapshot-id "..." --cursor "..."
 ```
 
-Then continue only with:
+Do not pass `--chat` with `--snapshot-id`, and do not change snapshot filters
+or mode. The JSON field `snapshot_id` and the `next_cursor` value are opaque
+machine values.
+Never expose the absolute snapshot path.
 
-```text
-read_conversation(snapshot_id="...", cursor="...")
-```
-
-Do not pass `chat` together with `snapshot_id`. Do not change the snapshot's
-filters, mode, or target. A snapshot is a compact machine file, not a
-human-facing transcript, and its absolute path must never be exposed.
-
-Live cursors are tied to their read scope and source generation. Do not reuse a
-cursor after `refresh_history`, for another chat, or for another filter set.
-`has_more=false` means the current read range is complete.
+Live cursors include the read scope, filter binding, source signature, and a
+persisted read generation. A cursor can continue in a later CLI process while
+the source is unchanged. It becomes invalid after `refresh-history`, source
+replacement, or a different scope/filter set; start a new read in that case.
 
 ## Evidence Boundaries
 
-Preserve unknown identities. Do not infer that a zero result proves an offline
-event did not happen. Report the exact chat and time range that were actually
-read, and distinguish message evidence from inference.
+Preserve unknown identities and distinguish message evidence from inference.
+Report the exact chat and time range actually read. A zero-result search does
+not prove that an offline event did not happen. Keep WeChat logged in during
+first configuration so account-specific keys can be obtained.

@@ -1,6 +1,6 @@
 {
   "name": "wechat-history-reader",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Let AI agents read, find, and summarize local WeChat chats.",
   "author": {
     "name": "Glacier Xiaowei"
@@ -13,7 +13,6 @@
     "developerName": "Glacier Xiaowei",
     "category": "Productivity",
     "capabilities": [
-      "MCP server",
       "Skill"
     ],
     "defaultPrompt": [
@@ -21,6 +20,5 @@
       "找出群里关于某件事的最终决定",
       "整理过去一个月聊天中提到的待办事项"
     ]
-  },
-  "mcpServers": "./.mcp.json"
+  }
 }
