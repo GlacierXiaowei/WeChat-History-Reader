@@ -70,10 +70,6 @@ class HistoryExporter:
                     include_raw_content=True,
                 )
             )
-            snapshot_check = getattr(backend, "snapshot_is_current", None)
-            if snapshot_check is not None and not snapshot_check(snapshot):
-                raise RuntimeError("WeChat source changed during export; retry the export.")
-
             with jsonl_path.open("w", encoding="utf-8", newline="\n") as handle:
                 for record in records:
                     handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")

@@ -125,12 +125,15 @@ def read_conversation(
     create_snapshot: bool = False,
     member_count: int | None = None,
     min_member_count: int | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
     """Read one known conversation directly in compact AI rows, or continue a machine snapshot.
 
     Use chat for a known person, group, or chat_id. Use snapshot_id only for a prior
     create_snapshot result. chat and snapshot_id are mutually exclusive. compact is
     the default; records is only for evidence or raw content.
+    Snapshot creation refreshes once by default; refresh=false reuses cached data.
+    Ordinary reads and snapshot continuations ignore refresh.
     """
     return safe_call(
         "conversation",
@@ -147,6 +150,7 @@ def read_conversation(
             create_snapshot=create_snapshot,
             member_count=member_count,
             min_member_count=min_member_count,
+            refresh=refresh,
         ),
         mode=mode,
     )
@@ -186,8 +190,13 @@ def export_conversation(
     start_time: str = "",
     end_time: str = "",
     output_dir: str | None = None,
+    refresh: bool = True,
 ) -> dict[str, Any]:
-    """Export a conversation permanently only when the user explicitly requests it."""
+    """Export a conversation permanently only when the user explicitly requests it.
+
+    Refresh once by default, or use refresh=false to reuse cached data. Export
+    from fixed local copies; later WeChat source changes do not cancel the export.
+    """
     return safe_call(
         "export",
         lambda: service.export_conversation(
@@ -197,6 +206,7 @@ def export_conversation(
             start_time=start_time,
             end_time=end_time,
             output_dir=output_dir,
+            refresh=refresh,
         ),
     )
 

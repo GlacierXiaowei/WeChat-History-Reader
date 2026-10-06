@@ -10,7 +10,7 @@ import venv
 from pathlib import Path
 
 
-PACKAGE_VERSION = "2.0.0"
+PACKAGE_VERSION = "2.0.1"
 MISSING_PYTHON_MESSAGE = (
     "WeChat History Reader requires Python 3.10 or newer. "
     "Install Python 3.10+ and make sure the Windows Python launcher or python command is available."

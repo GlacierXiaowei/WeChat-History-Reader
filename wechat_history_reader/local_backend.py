@@ -8,7 +8,7 @@ import sqlite3
 import tempfile
 import time
 import unicodedata
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -328,6 +328,7 @@ class LocalHistoryBackend:
         allow_discovery: bool = False,
         allow_key_scan: bool = False,
         force: bool = False,
+        reuse: bool = False,
     ) -> dict[str, Any]:
         previous_db_dir = self.db_dir
         try:
@@ -336,6 +337,7 @@ class LocalHistoryBackend:
                 allow_discovery=allow_discovery,
                 allow_key_scan=allow_key_scan,
                 force=force,
+                reuse=reuse,
             )
         except Exception:
             self.db_dir = previous_db_dir
@@ -348,6 +350,7 @@ class LocalHistoryBackend:
         allow_discovery: bool = False,
         allow_key_scan: bool = False,
         force: bool = False,
+        reuse: bool = False,
     ) -> dict[str, Any]:
         explicit_configuration = configured_db_dir is not None or allow_discovery or allow_key_scan
         force = force or explicit_configuration
@@ -356,7 +359,7 @@ class LocalHistoryBackend:
             not force
             and self._snapshot
             and self._last_refresh_monotonic is not None
-            and now - self._last_refresh_monotonic < self.cache_age_seconds
+            and (reuse or now - self._last_refresh_monotonic < self.cache_age_seconds)
         ):
             snapshot = dict(self._snapshot)
             snapshot.update(
@@ -566,6 +569,16 @@ class LocalHistoryBackend:
             return False
         databases = discover_encrypted_databases(self.db_dir)
         return source_signature(databases) == snapshot.get("source_signature")
+
+    @contextmanager
+    def frozen_read(self, *, refresh: bool):
+        previous_tables = self._message_tables_cache
+        self._message_tables_cache = {}
+        try:
+            with self.reader._cache.frozen(refresh=refresh):
+                yield
+        finally:
+            self._message_tables_cache = previous_tables
 
     def _group_member_counts(self) -> dict[str, int]:
         if self._group_member_counts_cache is not None:

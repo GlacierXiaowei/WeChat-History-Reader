@@ -7,6 +7,7 @@ import tempfile
 import threading
 import unicodedata
 from collections import OrderedDict
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -439,6 +440,13 @@ class HistoryService:
                 "refreshed_at": snapshot.get("snapshot_at", ""),
             }
 
+    @contextmanager
+    def _fixed_read(self, *, refresh: bool):
+        snapshot = self._prepare(force=True) if refresh else self._prepare(reuse=True)
+        freeze = getattr(self.backend, "frozen_read", None)
+        with freeze(refresh=refresh) if callable(freeze) else nullcontext():
+            yield snapshot
+
     def _snapshot_rows(
         self,
         chat_id: str,
@@ -508,6 +516,65 @@ class HistoryService:
             )
         return result
 
+    def _create_snapshot(
+        self,
+        chat: str,
+        *,
+        refresh: bool,
+        limit: int,
+        start_time: str,
+        end_time: str,
+        keyword: str,
+        member_count: int | None,
+        min_member_count: int | None,
+    ) -> dict[str, Any]:
+        with self._fixed_read(refresh=refresh) as snapshot:
+            status, selected, candidates = self._resolve_chat(
+                chat,
+                member_count=member_count,
+                min_member_count=min_member_count,
+            )
+            if status != "ok":
+                return self._resolution_error(status, candidates)
+            assert selected is not None
+            kind = self._chat_kind(selected)
+            metadata = {
+                "chat": self._chat_descriptor(selected),
+                "columns": self._columns(
+                    mode="compact", kind=kind, include_raw_content=False
+                ),
+                "filters": {
+                    "end_time": end_time,
+                    "keyword": keyword,
+                    "start_time": start_time,
+                },
+                "kind": kind,
+                "mode": "compact",
+                "source_signature": str(snapshot.get("source_signature") or ""),
+            }
+            created_id, _ = self.snapshot_store.create(
+                metadata=metadata,
+                rows=self._snapshot_rows(
+                    str(selected["id"]),
+                    start_time=start_time,
+                    end_time=end_time,
+                    keyword=keyword,
+                    kind=kind,
+                ),
+            )
+        return self._read_snapshot(
+            created_id,
+            cursor="",
+            limit=limit,
+            mode="compact",
+            include_raw_content=False,
+            chat=None,
+            create_snapshot=False,
+            keyword="",
+            start_time="",
+            end_time="",
+        )
+
     def read_conversation(
         self,
         chat: str | None = None,
@@ -523,6 +590,7 @@ class HistoryService:
         create_snapshot: bool = False,
         member_count: int | None = None,
         min_member_count: int | None = None,
+        refresh: bool = True,
     ) -> dict[str, Any]:
         page_size = validate_limit(limit)
         mode = self._normalize_mode(mode)
@@ -552,6 +620,17 @@ class HistoryService:
 
         parsed_cursor = parse_cursor(cursor)
         with self._lock:
+            if create_snapshot:
+                return self._create_snapshot(
+                    chat_value,
+                    refresh=refresh,
+                    limit=page_size,
+                    start_time=start_time,
+                    end_time=end_time,
+                    keyword=keyword,
+                    member_count=member_count,
+                    min_member_count=min_member_count,
+                )
             snapshot = self._prepare()
             status, selected, candidates = self._resolve_chat(
                 chat_value,
@@ -580,52 +659,6 @@ class HistoryService:
                 binding=binding,
             )
             self._ensure_cursor_source_current(parsed_cursor, snapshot)
-
-            if create_snapshot:
-                metadata = {
-                    "chat": self._chat_descriptor(selected),
-                    "columns": self._columns(
-                        mode="compact",
-                        kind=kind,
-                        include_raw_content=False,
-                    ),
-                    "filters": {
-                        "end_time": end_time,
-                        "keyword": keyword,
-                        "start_time": start_time,
-                    },
-                    "kind": kind,
-                    "mode": "compact",
-                    "source_signature": str(snapshot.get("source_signature") or ""),
-                }
-                source_checker = getattr(self.backend, "snapshot_is_current", None)
-                created_id, _ = self.snapshot_store.create(
-                    metadata=metadata,
-                    rows=self._snapshot_rows(
-                        str(selected["id"]),
-                        start_time=start_time,
-                        end_time=end_time,
-                        keyword=keyword,
-                        kind=kind,
-                    ),
-                    validate=(
-                        (lambda: bool(source_checker(snapshot)))
-                        if callable(source_checker)
-                        else None
-                    ),
-                )
-                return self._read_snapshot(
-                    created_id,
-                    cursor="",
-                    limit=page_size,
-                    mode="compact",
-                    include_raw_content=False,
-                    chat=None,
-                    create_snapshot=False,
-                    keyword="",
-                    start_time="",
-                    end_time="",
-                )
 
             params = {
                 "chat_id": selected.get("id", ""),
@@ -809,9 +842,9 @@ class HistoryService:
         start_time: str = "",
         end_time: str = "",
         output_dir: str | None = None,
+        refresh: bool = True,
     ) -> dict[str, Any]:
-        with self._lock:
-            snapshot = self._prepare()
+        with self._lock, self._fixed_read(refresh=refresh) as snapshot:
             status, selected, candidates = self._resolve_chat(
                 chat,
                 member_count=member_count,

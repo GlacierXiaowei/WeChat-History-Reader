@@ -7,8 +7,9 @@ Runs on Windows Python (needs access to D:\ WeChat databases).
 
 import os, sys, json, time, sqlite3, tempfile, struct, hashlib, atexit, re
 import hmac as hmac_mod
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import datetime
+from pathlib import Path
 import xml.etree.ElementTree as ET
 from Crypto.Cipher import AES
 from mcp.server.fastmcp import FastMCP
@@ -111,6 +112,9 @@ class DBCache:
 
     def __init__(self):
         self._cache = {}  # rel_key -> (db_mtime, wal_mtime, tmp_path)
+        self._frozen_paths = None
+        self._frozen_root = None
+        self._frozen_refresh = True
         os.makedirs(self.CACHE_DIR, exist_ok=True)
         self._load_persistent_cache()
 
@@ -159,6 +163,49 @@ class DBCache:
             pass
 
     def get(self, rel_key):
+        if self._frozen_paths is None:
+            return self._get_current(rel_key)
+        if rel_key in self._frozen_paths:
+            return self._frozen_paths[rel_key]
+
+        cached = self._cache.get(rel_key)
+        cached_path = cached[2] if cached else self._cache_path(rel_key)
+        if not self._frozen_refresh and os.path.isfile(cached_path):
+            source_path = cached_path
+        else:
+            source_path = self._get_current(rel_key)
+        if not source_path:
+            self._frozen_paths[rel_key] = None
+            return None
+
+        destination = os.path.join(
+            self._frozen_root, hashlib.sha256(rel_key.encode()).hexdigest() + ".db"
+        )
+        with (
+            closing(sqlite3.connect(Path(source_path).resolve().as_uri() + "?mode=ro", uri=True)) as source,
+            closing(sqlite3.connect(destination)) as target,
+        ):
+            source.backup(target)
+        self._frozen_paths[rel_key] = destination
+        return destination
+
+    @contextmanager
+    def frozen(self, *, refresh=True):
+        """Pin private SQLite copies for one export or snapshot operation."""
+        if self._frozen_paths is not None:
+            raise RuntimeError("A frozen database read is already active.")
+        with tempfile.TemporaryDirectory(prefix="fixed-read-", dir=self.CACHE_DIR) as root:
+            self._frozen_root = root
+            self._frozen_paths = {}
+            self._frozen_refresh = refresh
+            try:
+                yield
+            finally:
+                self._frozen_paths = None
+                self._frozen_root = None
+                self._frozen_refresh = True
+
+    def _get_current(self, rel_key):
         key_info = get_key_info(ALL_KEYS, rel_key)
         if not key_info:
             return None

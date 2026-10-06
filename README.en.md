@@ -119,6 +119,12 @@ Create a fixed machine snapshot with:
 read_conversation(chat="contact or group name", create_snapshot=true)
 ```
 
+Snapshot creation refreshes once by default, then pins local database copies.
+Later WeChat messages do not cancel creation. Set `refresh=false` to reuse
+existing decrypted caches for historical data. A missing cache still needs its
+first decryption. This option does not change ordinary reads or continuations
+of an existing snapshot.
+
 The first response includes `snapshot_id`. Continue with:
 
 ```text
@@ -162,6 +168,11 @@ the new directory.
 
 Exports are permanent user-requested artifacts under `exports`. Snapshot files
 are machine-read caches under `snapshots`; they are intentionally separate.
+
+`export_conversation(chat=..., refresh=true)` refreshes once by default, then
+exports from fixed local database copies without canceling when the original
+WeChat databases change. Set `refresh=false` to reuse existing decrypted caches
+and skip the refresh for historical data.
 
 ### Runtime Data
 
