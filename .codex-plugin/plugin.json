@@ -1,7 +1,7 @@
 {
   "name": "wechat-history-reader",
   "version": "2.1.1",
-  "description": "Let AI agents read, find, and summarize local WeChat chats.",
+  "description": "Read, search, summarize, and export local WeChat history with a Skill and offline-bootstrapped JSON CLI.",
   "author": {
     "name": "Glacier Xiaowei"
   },
@@ -9,16 +9,17 @@
   "interface": {
     "displayName": "WeChat History Reader",
     "shortDescription": "让 AI 读取你的微信聊天",
-    "longDescription": "WeChat History Reader 是一个开源本地插件，让 AI Agent 直接读取、搜索和总结微信聊天记录，帮助 Agent 更好地理解你的工作和生活。它提供面向 AI 优化的紧凑结构化读取、模糊搜索、分页和长聊天快照，并且不上传聊天内容、不修改微信原始聊天记录，读取和处理都在本机完成。",
+    "longDescription": "WeChat History Reader 2.1.1 是一个只提供 Skill 和本地 JSON CLI 的开源插件，不使用 MCP。用户自行安装 Python；首次业务调用由 bootstrap 创建私有 venv，并从随包 wheel 离线安装依赖，不访问 PyPI。它支持紧凑/records 读取、关键词和时间范围搜索、会话查找、跨进程分页、长聊天快照、导出与图片解码。doctor 默认只读，doctor --repair 才修复运行环境。聊天内容不上传，微信原始数据库不修改。",
     "developerName": "Glacier Xiaowei",
     "category": "Productivity",
     "capabilities": [
       "Skill"
     ],
     "defaultPrompt": [
-      "帮我总结我和某人的最近讨论",
-      "找出群里关于某件事的最终决定",
-      "整理过去一个月聊天中提到的待办事项"
+      "使用当前插件的本地启动器读取我和某人的最近讨论并总结；默认 compact，保留聊天和时间范围",
+      "在指定群聊中按关键词和时间范围查找关于某件事的最终决定；需要核对证据时使用 records",
+      "整理过去一个月指定聊天中的待办事项；长对话使用快照续页，不展示快照绝对路径",
+      "用普通 doctor 检查运行环境和微信数据状态；本次只诊断，不安装依赖、不执行 repair"
     ]
   }
 }
