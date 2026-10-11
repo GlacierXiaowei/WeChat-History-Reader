@@ -1,9 +1,9 @@
 ---
 name: wechat-history-reader
-description: Use when the user wants to read, search, summarize, configure, diagnose, export, or decode images from local WeChat history with WeChat History Reader 2.1.1.
+description: Use when the user wants to read, search, summarize, configure, diagnose, export, or decode images from local WeChat history with WeChat History Reader 2.1.2.
 ---
 
-# WeChat History Reader 2.1.1
+# WeChat History Reader 2.1.2
 
 This version is Skill-only with a local JSON CLI, not an MCP server. Do not
 invoke old MCP tools or restore their manifests or server entrypoints.

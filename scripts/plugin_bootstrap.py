@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-PACKAGE_VERSION = "2.1.1"
+PACKAGE_VERSION = "2.1.2"
 MINIMUM_PYTHON = (3, 10)
 REQUIRED_DEPENDENCIES = {
     "pycryptodome": ("3.23.0", "Crypto"),

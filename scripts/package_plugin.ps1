@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $BuildRoot = Join-Path $Root "build"
-$Stage = Join-Path $BuildRoot "package-staging\2.1.1"
+$Stage = Join-Path $BuildRoot "package-staging\2.1.2"
 
 New-Item -ItemType Directory -Force -Path $BuildRoot | Out-Null
 $ResolvedBuild = (Resolve-Path $BuildRoot).Path.TrimEnd("\")
@@ -37,6 +37,8 @@ foreach ($item in @(
     "README.md",
     "README.en.md",
     "CHANGELOG.md",
+    "docs\releases",
+    "assets",
     "skills",
     "wechat_history_reader",
     "vendor\wheels",
@@ -64,11 +66,21 @@ Get-ChildItem -LiteralPath $Stage -Recurse -File -Filter "*.pyc" -ErrorAction Si
     Remove-Item -Force
 
 $manifest = Get-Content -Raw (Join-Path $Stage ".codex-plugin\plugin.json") | ConvertFrom-Json
-if ($manifest.version -ne "2.1.1") {
+if ($manifest.version -ne "2.1.2") {
     throw "Unexpected staged plugin version: $($manifest.version)"
 }
 if (($manifest.interface.capabilities -join ",") -ne "Skill") {
     throw "The staged plugin must expose only the Skill capability."
+}
+foreach ($assetField in @("composerIcon", "logo")) {
+    $asset = [string]$manifest.interface.$assetField
+    if ([string]::IsNullOrWhiteSpace($asset)) {
+        throw "Missing required Codex display asset field: interface.$assetField"
+    }
+    $assetPath = Join-Path $Stage ($asset.Replace("/", "\"))
+    if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) {
+        throw "Missing staged Codex display asset for interface.$assetField`: $asset"
+    }
 }
 $wheelDir = Join-Path $Stage "vendor\wheels"
 $wheels = Get-ChildItem -LiteralPath $wheelDir -Filter "*.whl" -File
@@ -93,11 +105,23 @@ if ((Get-Content -Raw (Join-Path $Stage "pyproject.toml")) -match "(?im)^\s*['""
 if (-not $CheckOnly) {
     $Dist = Join-Path $Root "dist"
     New-Item -ItemType Directory -Force -Path $Dist | Out-Null
-    $Archive = Join-Path $Dist "wechat-history-reader-2.1.1.zip"
+    $Archive = Join-Path $Dist "wechat-history-reader-2.1.2.zip"
     if (Test-Path -LiteralPath $Archive) {
         Remove-Item -LiteralPath $Archive -Force
     }
-    Compress-Archive -Path (Join-Path $Stage "*") -DestinationPath $Archive -CompressionLevel Optimal
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [IO.Compression.ZipFile]::Open($Archive, [IO.Compression.ZipArchiveMode]::Create)
+    $archiveRoot = [string]$manifest.name
+    try {
+        foreach ($file in (Get-ChildItem -LiteralPath $Stage -Force -Recurse -File | Sort-Object FullName)) {
+            $relativePath = ($archiveRoot + "/" + $file.FullName.Substring($Stage.Length + 1)).Replace("\", "/")
+            [IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $zip, $file.FullName, $relativePath, [IO.Compression.CompressionLevel]::Optimal
+            ) | Out-Null
+        }
+    } finally {
+        $zip.Dispose()
+    }
     Write-Host "Created $Archive"
 }
 Write-Host "Validated $Stage"

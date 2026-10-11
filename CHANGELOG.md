@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.2 - 2026-10-11
+
+- Updated the public plugin metadata and display assets for the 2.1.2
+  Skill-only package.
+- Kept the offline local JSON CLI and bundled dependency workflow unchanged.
+
 ## 2.1.1 - 2026-10-06
 
 - Removed the obsolete MCP manifests, server entrypoint, and legacy MCP tool

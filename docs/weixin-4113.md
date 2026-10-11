@@ -1,6 +1,6 @@
 # Weixin 4.1.13 compatibility
 
-This scanner note applies to the WeChat History Reader 2.1.1 local CLI.
+This scanner note applies to the WeChat History Reader 2.1.2 local CLI.
 It describes Weixin database compatibility, not a separate plugin version
 or MCP interface.
 
